@@ -40,7 +40,7 @@ declare global {
   }
 }
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://impression-household-sandy-volunteer.trycloudflare.com';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://amazing-remove-solve-gone.trycloudflare.com';
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) => {
   const { cart, total, clearCart } = useCart();
