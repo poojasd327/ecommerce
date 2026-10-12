@@ -24,6 +24,7 @@ import {
   AutoAwesome,
   AccountBalanceWallet,
   Lock,
+  WhatsApp,
 } from '@mui/icons-material';
 import { useCart } from '@/context/CartContext';
 import confetti from 'canvas-confetti';
@@ -47,6 +48,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
   const [isOrdered, setIsOrdered] = useState<boolean>(false);
   const [orderNumber, setOrderNumber] = useState<string>('');
   const [paymentId, setPaymentId] = useState<string>('');
+  const [whatsappUrl, setWhatsappUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
@@ -142,6 +144,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
             if (verifyData.success) {
               setOrderNumber(response.razorpay_order_id || order.id);
               setPaymentId(response.razorpay_payment_id);
+              if (verifyData.whatsapp?.clickToChatUrl) {
+                setWhatsappUrl(verifyData.whatsapp.clickToChatUrl);
+              }
               setIsOrdered(true);
               clearCart();
 
@@ -552,6 +557,28 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
               </Typography>
             </Box>
 
+            {whatsappUrl && (
+              <Box sx={{ mb: 3 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<WhatsApp sx={{ color: "#25D366" }} />}
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    borderColor: "#25D366",
+                    color: "#25D366",
+                    backgroundColor: "rgba(37, 211, 102, 0.1)",
+                    "&:hover": { borderColor: "#25D366", backgroundColor: "rgba(37, 211, 102, 0.2)" },
+                    py: 1.2,
+                    px: 3,
+                    fontWeight: 700,
+                  }}
+                >
+                  View Order Receipt on WhatsApp 💬
+                </Button>
+              </Box>
+            )}
             <Button variant="contained" color="primary" onClick={handleCloseAll} size="large">
               Continue Shopping
             </Button>
