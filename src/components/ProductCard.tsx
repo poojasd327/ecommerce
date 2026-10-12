@@ -273,14 +273,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onQuickView }
           <Box sx={{ mt: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box>
               <Typography variant="h6" sx={{ color: '#E6C594', fontWeight: 700, fontSize: '1.15rem' }}>
-                ${product.price}
+                ₹{product.price.toLocaleString('en-IN')}
               </Typography>
               {product.originalPrice && (
                 <Typography
                   variant="caption"
                   sx={{ color: '#A5AAB8', textDecoration: 'line-through', ml: 0.8 }}
                 >
-                  ${product.originalPrice}
+                  ₹{product.originalPrice.toLocaleString('en-IN')}
                 </Typography>
               )}
             </Box>

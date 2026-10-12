@@ -202,11 +202,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
                   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5 }}>
                     <Typography variant="h4" sx={{ color: '#E6C594', fontWeight: 800 }}>
-                      ${product.price}
+                      ₹{product.price.toLocaleString('en-IN')}
                     </Typography>
                     {product.originalPrice && (
                       <Typography variant="body1" sx={{ color: '#A5AAB8', textDecoration: 'line-through' }}>
-                        ${product.originalPrice}
+                        ₹{product.originalPrice.toLocaleString('en-IN')}
                       </Typography>
                     )}
                   </Box>
@@ -415,7 +415,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </AccordionSummary>
                     <AccordionDetails>
                       <Typography variant="caption" sx={{ color: '#A5AAB8' }}>
-                        Free DHL Express worldwide delivery on orders over $200. Delivered in signature gold-embossed box within 2-4 business days. Complimentary 30-day hassle-free returns.
+                        Free DHL Express worldwide delivery on orders over ₹1,999. Delivered in signature gold-embossed box within 2-4 business days. Complimentary 30-day hassle-free returns.
                       </Typography>
                     </AccordionDetails>
                   </Accordion>

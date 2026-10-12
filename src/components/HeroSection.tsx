@@ -209,7 +209,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                         Express Shipping
                       </Typography>
                       <Typography variant="caption" sx={{ color: '#A5AAB8' }}>
-                        Free on orders over $200
+                        Free on orders over ₹1,999
                       </Typography>
                     </Box>
                   </Box>

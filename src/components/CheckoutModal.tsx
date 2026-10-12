@@ -15,14 +15,15 @@ import {
   Divider,
   Chip,
   Alert,
-  Stack,
+  CircularProgress,
 } from '@mui/material';
 import {
   Close,
-  CreditCard,
   CheckCircle,
   Shield,
   AutoAwesome,
+  AccountBalanceWallet,
+  Lock,
 } from '@mui/icons-material';
 import { useCart } from '@/context/CartContext';
 import confetti from 'canvas-confetti';
@@ -32,42 +33,199 @@ interface CheckoutModalProps {
   onClose: () => void;
 }
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
+
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) => {
   const { cart, total, clearCart } = useCart();
   const [tab, setTab] = useState<number>(0);
   const [isOrdered, setIsOrdered] = useState<boolean>(false);
   const [orderNumber, setOrderNumber] = useState<string>('');
+  const [paymentId, setPaymentId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Shipping Form State
-  const [name, setName] = useState('Sophia Laurent');
-  const [email, setEmail] = useState('sophia.laurent@example.com');
-  const [address, setAddress] = useState('742 Fifth Avenue, Suite 12B');
-  const [city, setCity] = useState('New York');
-  const [country, setCountry] = useState('United States');
-  const [zip, setZip] = useState('10019');
+  const [name, setName] = useState('Pooja Devaraj');
+  const [email, setEmail] = useState('pooja.sd0415@gmail.com');
+  const [phone, setPhone] = useState('+91 9876543210');
+  const [address, setAddress] = useState('124 Indiranagar, 100 Feet Road');
+  const [city, setCity] = useState('Bengaluru');
+  const [country, setCountry] = useState('India');
+  const [zip, setZip] = useState('560038');
+
+  // Helper to dynamically load Razorpay Checkout Script
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleRazorpayPayment = async () => {
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Failed to load Razorpay payment SDK. Please check your internet connection.');
+      }
+
+      // 1. Create order on Express Backend
+      const orderRes = await fetch(`${BACKEND_URL}/api/payment/create-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: Math.round(total),
+          currency: 'INR',
+          receipt: `rcpt_${Date.now()}`,
+          items: cart.map(i => ({ id: i.product.id, name: i.product.name, quantity: i.quantity, price: i.product.price, selectedSize: i.selectedSize, selectedColor: i.selectedColor.name })),
+          notes: {
+            customer_name: name,
+            customer_email: email,
+            customer_phone: phone,
+            shipping_address: `${address}, ${city}, ${zip}, ${country}`,
+          },
+        }),
+      });
+
+      if (!orderRes.ok) {
+        const errorData = await orderRes.json().catch(() => ({}));
+        throw new Error(errorData.message || `Backend server returned status ${orderRes.status}`);
+      }
+
+      const orderData = await orderRes.json();
+      if (!orderData.success || !orderData.order) {
+        throw new Error(orderData.message || 'Unable to initialize order with payment server.');
+      }
+
+      const order = orderData.order;
+      const keyId = orderData.key_id;
+
+      // 2. Open Razorpay Checkout modal
+      const options = {
+        key: keyId,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        name: 'LUMINA NUIT',
+        description: 'Luxury Mulberry Silk Sleepwear Checkout',
+        order_id: order.id,
+        handler: async function (response: any) {
+          try {
+            setIsLoading(true);
+            // 3. Verify payment signature on backend
+            const verifyRes = await fetch(`${BACKEND_URL}/api/payment/verify`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              setOrderNumber(response.razorpay_order_id || order.id);
+              setPaymentId(response.razorpay_payment_id);
+              setIsOrdered(true);
+              clearCart();
+
+              try {
+                confetti({
+                  particleCount: 140,
+                  spread: 85,
+                  origin: { y: 0.6 },
+                  colors: ['#E6C594', '#F3D0D7', '#FFFFFF', '#C89C5D'],
+                });
+              } catch (e) {
+                console.log('Confetti triggered');
+              }
+            } else {
+              setErrorMessage(verifyData.message || 'Payment verification failed.');
+            }
+          } catch (err: any) {
+            setErrorMessage(err.message || 'Error verifying payment with server.');
+          } finally {
+            setIsLoading(false);
+          }
+        },
+        prefill: {
+          name: name,
+          email: email,
+          contact: phone.replace(/[^0-9]/g, '') || '9876543210',
+        },
+        theme: {
+          color: '#E6C594',
+        },
+        modal: {
+          ondismiss: function () {
+            setIsLoading(false);
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (resp: any) {
+        setErrorMessage(resp.error?.description || 'Payment failed or was cancelled.');
+        setIsLoading(false);
+      });
+      rzp.open();
+    } catch (err: any) {
+      console.error('Payment initialization failed:', err);
+      setErrorMessage(
+        err.message || 'Could not connect to payment backend. Please make sure the server is running on port 5001.'
+      );
+      setIsLoading(false);
+    }
+  };
 
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
-    const randomOrder = 'LUM-' + Math.floor(100000 + Math.random() * 900000);
-    setOrderNumber(randomOrder);
-    setIsOrdered(true);
 
-    try {
-      confetti({
-        particleCount: 120,
-        spread: 80,
-        origin: { y: 0.6 },
-        colors: ['#E6C594', '#F3D0D7', '#FFFFFF', '#C89C5D'],
-      });
-    } catch (e) {
-      console.log('Confetti effect triggered');
+    if (tab === 0) {
+      // Razorpay Checkout Gateway
+      handleRazorpayPayment();
+    } else {
+      // Direct mock flow for alternative methods
+      const randomOrder = 'LUM-' + Math.floor(100000 + Math.random() * 900000);
+      setOrderNumber(randomOrder);
+      setPaymentId('SIMULATED_' + Date.now());
+      setIsOrdered(true);
+
+      try {
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#E6C594', '#F3D0D7', '#FFFFFF', '#C89C5D'],
+        });
+      } catch (e) {
+        console.log('Confetti effect triggered');
+      }
+
+      clearCart();
     }
-
-    clearCart();
   };
 
   const handleCloseAll = () => {
     setIsOrdered(false);
+    setErrorMessage('');
+    setIsLoading(false);
     onClose();
   };
 
@@ -97,7 +255,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
             <Box sx={{ textAlign: 'center', mb: 3 }}>
               <Chip
                 icon={<Shield sx={{ color: '#4CAF50 !important', fontSize: 16 }} />}
-                label="ENCRYPTED 256-BIT EXPRESS CHECKOUT"
+                label="ENCRYPTED 256-BIT SECURE CHECKOUT"
                 sx={{
                   backgroundColor: 'rgba(76, 175, 80, 0.15)',
                   color: '#4CAF50',
@@ -111,13 +269,23 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
               </Typography>
             </Box>
 
+            {errorMessage && (
+              <Alert
+                severity="error"
+                onClose={() => setErrorMessage('')}
+                sx={{ mb: 3, backgroundColor: 'rgba(244, 67, 54, 0.15)', color: '#ff8a80' }}
+              >
+                {errorMessage}
+              </Alert>
+            )}
+
             <DialogContent sx={{ px: { xs: 1, sm: 3 } }}>
               <form onSubmit={handlePlaceOrder}>
                 <Grid container spacing={4}>
                   {/* Shipping & Payment Left */}
                   <Grid size={{ xs: 12, md: 7 }}>
                     <Typography variant="subtitle1" sx={{ color: '#E6C594', fontWeight: 700, mb: 1.5 }}>
-                      1. Shipping Address
+                      1. Shipping Address & Contact
                     </Typography>
                     <Grid container spacing={2} sx={{ mb: 3 }}>
                       <Grid size={{ xs: 12, sm: 6 }}>
@@ -143,6 +311,28 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
                           slotProps={{ input: { sx: { color: '#FFF', backgroundColor: 'rgba(11, 13, 23, 0.8)' } } }}
                         />
                       </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                          label="Phone Number"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          required
+                          fullWidth
+                          size="small"
+                          slotProps={{ input: { sx: { color: '#FFF', backgroundColor: 'rgba(11, 13, 23, 0.8)' } } }}
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                          label="City"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          required
+                          fullWidth
+                          size="small"
+                          slotProps={{ input: { sx: { color: '#FFF', backgroundColor: 'rgba(11, 13, 23, 0.8)' } } }}
+                        />
+                      </Grid>
                       <Grid size={{ xs: 12 }}>
                         <TextField
                           label="Street Address"
@@ -154,18 +344,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
                           slotProps={{ input: { sx: { color: '#FFF', backgroundColor: 'rgba(11, 13, 23, 0.8)' } } }}
                         />
                       </Grid>
-                      <Grid size={{ xs: 12, sm: 4 }}>
-                        <TextField
-                          label="City"
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          required
-                          fullWidth
-                          size="small"
-                          slotProps={{ input: { sx: { color: '#FFF', backgroundColor: 'rgba(11, 13, 23, 0.8)' } } }}
-                        />
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 4 }}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                           label="Country"
                           value={country}
@@ -176,7 +355,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
                           slotProps={{ input: { sx: { color: '#FFF', backgroundColor: 'rgba(11, 13, 23, 0.8)' } } }}
                         />
                       </Grid>
-                      <Grid size={{ xs: 12, sm: 4 }}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                           label="Zip Code"
                           value={zip}
@@ -202,47 +381,44 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
                         '& .MuiTabs-indicator': { backgroundColor: '#E6C594' },
                       }}
                     >
-                      <Tab label="Credit Card" />
+                      <Tab
+                        label="Razorpay Gateway"
+                        icon={<AccountBalanceWallet sx={{ fontSize: 18 }} />}
+                        iconPosition="start"
+                      />
                       <Tab label="Apple Pay " />
-                      <Tab label="Klarna 4x $0 Interest" />
+                      <Tab label="EMI / Pay Later" />
                     </Tabs>
 
                     {tab === 0 && (
-                      <Stack spacing={2}>
-                        <TextField
-                          label="Card Number"
-                          defaultValue="4532 •••• •••• 8892"
-                          fullWidth
+                      <Box
+                        sx={{
+                          p: 2.5,
+                          borderRadius: 2.5,
+                          backgroundColor: 'rgba(11, 13, 23, 0.9)',
+                          border: '1px solid rgba(230, 197, 148, 0.25)',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <Lock sx={{ color: '#4CAF50', fontSize: 20 }} />
+                          <Typography variant="subtitle2" sx={{ color: '#FFF', fontWeight: 700 }}>
+                            Razorpay Unified Gateway
+                          </Typography>
+                        </Box>
+                        <Typography variant="body2" sx={{ color: '#A5AAB8', mb: 1.5, fontSize: '0.85rem' }}>
+                          Supports UPI (Google Pay, PhonePe, Paytm), All Major Debit & Credit Cards, NetBanking, and Wallets.
+                        </Typography>
+                        <Chip
+                          label="Instant 256-Bit Verification"
                           size="small"
-                          slotProps={{
-                            input: {
-                              startAdornment: <CreditCard sx={{ color: '#E6C594', mr: 1 }} />,
-                              sx: { color: '#FFF', backgroundColor: 'rgba(11, 13, 23, 0.8)' },
-                            },
+                          sx={{
+                            backgroundColor: 'rgba(230, 197, 148, 0.15)',
+                            color: '#E6C594',
+                            fontWeight: 600,
+                            fontSize: '0.7rem',
                           }}
                         />
-                        <Grid container spacing={2}>
-                          <Grid size={{ xs: 6 }}>
-                            <TextField
-                              label="Expiry Date"
-                              defaultValue="10/28"
-                              fullWidth
-                              size="small"
-                              slotProps={{ input: { sx: { color: '#FFF', backgroundColor: 'rgba(11, 13, 23, 0.8)' } } }}
-                            />
-                          </Grid>
-                          <Grid size={{ xs: 6 }}>
-                            <TextField
-                              label="CVC / CVV"
-                              defaultValue="482"
-                              type="password"
-                              fullWidth
-                              size="small"
-                              slotProps={{ input: { sx: { color: '#FFF', backgroundColor: 'rgba(11, 13, 23, 0.8)' } } }}
-                            />
-                          </Grid>
-                        </Grid>
-                      </Stack>
+                      </Box>
                     )}
 
                     {tab === 1 && (
@@ -253,7 +429,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
 
                     {tab === 2 && (
                       <Alert severity="info" sx={{ backgroundColor: 'rgba(243, 208, 215, 0.1)', color: '#FFF' }}>
-                        Pay in 4 interest-free biweekly payments of ${(total / 4).toFixed(2)}.
+                        Pay in 3 interest-free payments of ₹{(total / 3).toFixed(0)}.
                       </Alert>
                     )}
                   </Grid>
@@ -287,7 +463,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
                               </Typography>
                             </Box>
                             <Typography variant="subtitle2" sx={{ color: '#E6C594', fontWeight: 700 }}>
-                              ${item.product.price * item.quantity}
+                              ₹{item.product.price * item.quantity}
                             </Typography>
                           </Box>
                         ))}
@@ -310,7 +486,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
                             Total Due:
                           </Typography>
                           <Typography variant="h4" sx={{ color: '#E6C594', fontWeight: 800 }}>
-                            ${total.toFixed(2)}
+                            ₹{total.toFixed(2)}
                           </Typography>
                         </Box>
                       </Box>
@@ -321,10 +497,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
                         color="primary"
                         fullWidth
                         size="large"
-                        startIcon={<AutoAwesome />}
+                        disabled={isLoading}
+                        startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <AutoAwesome />}
                         sx={{ py: 1.6, fontSize: '1.05rem' }}
                       >
-                        Place Order (${total.toFixed(2)})
+                        {isLoading
+                          ? 'Connecting Razorpay...'
+                          : tab === 0
+                          ? `Pay ₹${total.toFixed(2)} with Razorpay`
+                          : `Place Order (₹${total.toFixed(2)})`}
                       </Button>
                     </Box>
                   </Grid>
@@ -337,11 +518,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ open, onClose }) =
           <Box sx={{ textAlign: 'center', py: 6, px: 2 }}>
             <CheckCircle sx={{ fontSize: 75, color: '#4CAF50', mb: 2 }} />
             <Typography variant="h3" sx={{ fontFamily: 'Playfair Display', color: '#FFF', mb: 1 }}>
-              Order Confirmed!
+              Payment Verified!
             </Typography>
-            <Typography variant="subtitle1" sx={{ color: '#E6C594', fontWeight: 700, mb: 3 }}>
-              Order Code: {orderNumber}
+            <Typography variant="subtitle1" sx={{ color: '#E6C594', fontWeight: 700, mb: 1 }}>
+              Order ID: {orderNumber}
             </Typography>
+            {paymentId && (
+              <Typography variant="body2" sx={{ color: '#A5AAB8', mb: 3 }}>
+                Razorpay Payment ID: <strong>{paymentId}</strong>
+              </Typography>
+            )}
 
             <Box
               sx={{

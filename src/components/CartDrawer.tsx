@@ -59,7 +59,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOpenCheckout }) => {
   };
 
   const progressPercent = Math.min(100, (subtotal / freeShippingThreshold) * 100);
-  const shippingFee = subtotal >= freeShippingThreshold || subtotal === 0 ? 0 : 15;
+  const shippingFee = subtotal >= freeShippingThreshold || subtotal === 0 ? 0 : 99;
   const finalTotal = total + shippingFee;
 
   return (
@@ -102,7 +102,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOpenCheckout }) => {
             {amountLeftForFreeShipping === 0 ? (
               <span style={{ color: '#4CAF50' }}>🎉 You unlocked Free Express Worldwide Delivery!</span>
             ) : (
-              `Add $${amountLeftForFreeShipping.toFixed(0)} more for Free Express Delivery`
+              `Add ₹${amountLeftForFreeShipping.toLocaleString('en-IN')} more for Free Express Delivery`
             )}
           </Typography>
         </Box>
@@ -191,7 +191,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOpenCheckout }) => {
                         </Box>
 
                         <Typography variant="subtitle1" sx={{ color: '#E6C594', fontWeight: 700 }}>
-                          ${item.product.price * item.quantity}
+                          ₹{(item.product.price * item.quantity).toLocaleString('en-IN')}
                         </Typography>
                       </Box>
                     </Box>
@@ -248,18 +248,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onOpenCheckout }) => {
           <Box sx={{ mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
               <Typography variant="body2" sx={{ color: '#A5AAB8' }}>Subtotal</Typography>
-              <Typography variant="body2" sx={{ color: '#FFF' }}>${subtotal.toFixed(2)}</Typography>
+              <Typography variant="body2" sx={{ color: '#FFF' }}>₹{subtotal.toLocaleString('en-IN')}</Typography>
             </Box>
             {discount > 0 && (
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                 <Typography variant="body2" sx={{ color: '#F3D0D7' }}>Discount ({discountCode})</Typography>
-                <Typography variant="body2" sx={{ color: '#F3D0D7' }}>-${discount.toFixed(2)}</Typography>
+                <Typography variant="body2" sx={{ color: '#F3D0D7' }}>-₹{discount.toFixed(2)}</Typography>
               </Box>
             )}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
               <Typography variant="body2" sx={{ color: '#A5AAB8' }}>Express Delivery</Typography>
               <Typography variant="body2" sx={{ color: shippingFee === 0 ? '#4CAF50' : '#FFF' }}>
-                {shippingFee === 0 ? 'FREE' : `$${shippingFee}`}
+                {shippingFee === 0 ? 'FREE' : `₹${shippingFee}`}
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>

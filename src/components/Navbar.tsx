@@ -86,7 +86,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         }}
       >
         <AutoAwesome sx={{ fontSize: 16, color: '#E6C594' }} />
-        <span>Complimentary Express Worldwide Shipping over $200 | Use Code <strong>LUMINA15</strong> for 15% OFF</span>
+        <span>Complimentary Express Worldwide Shipping over ₹1,999 | Use Code <strong>LUMINA15</strong> for 15% OFF</span>
         <AutoAwesome sx={{ fontSize: 16, color: '#E6C594' }} />
       </Box>
 

@@ -50,7 +50,7 @@ export const LuxuryGiftBoxBuilder: React.FC<LuxuryGiftBoxBuilderProps> = ({ open
     );
   };
 
-  const giftBoxBasePrice = 25; // Luxury gold foil box fee
+  const giftBoxBasePrice = 299; // Luxury gold foil box fee
   const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0);
   const totalGiftPrice = selectedProduct.price + giftBoxBasePrice + addonsTotal;
 
@@ -152,7 +152,7 @@ export const LuxuryGiftBoxBuilder: React.FC<LuxuryGiftBoxBuilderProps> = ({ open
                           {prod.name}
                         </Typography>
                         <Typography variant="caption" sx={{ color: '#E6C594', fontWeight: 700 }}>
-                          ${prod.price}
+                          ₹{prod.price.toLocaleString('en-IN')}
                         </Typography>
                       </Card>
                     </Grid>
@@ -191,7 +191,7 @@ export const LuxuryGiftBoxBuilder: React.FC<LuxuryGiftBoxBuilderProps> = ({ open
                             </Typography>
                           </Box>
                           <Typography variant="subtitle2" sx={{ color: '#E6C594', fontWeight: 700, ml: 1 }}>
-                            +${addon.price}
+                            +₹{addon.price.toLocaleString('en-IN')}
                           </Typography>
                         </Card>
                       </Grid>
@@ -291,7 +291,7 @@ export const LuxuryGiftBoxBuilder: React.FC<LuxuryGiftBoxBuilderProps> = ({ open
                       {selectedProduct.name}
                     </Typography>
                     <Typography variant="body2" sx={{ color: '#E6C594' }}>
-                      ${selectedProduct.price}
+                      ₹{selectedProduct.price.toLocaleString('en-IN')}
                     </Typography>
                   </Box>
 
@@ -300,7 +300,7 @@ export const LuxuryGiftBoxBuilder: React.FC<LuxuryGiftBoxBuilderProps> = ({ open
                       Gold Foil Box & Satin Ribbon
                     </Typography>
                     <Typography variant="body2" sx={{ color: '#E6C594' }}>
-                      +${giftBoxBasePrice}
+                      +₹{giftBoxBasePrice.toLocaleString('en-IN')}
                     </Typography>
                   </Box>
 
@@ -310,7 +310,7 @@ export const LuxuryGiftBoxBuilder: React.FC<LuxuryGiftBoxBuilderProps> = ({ open
                         + {addon.name}
                       </Typography>
                       <Typography variant="caption" sx={{ color: '#E6C594' }}>
-                        +${addon.price}
+                        +₹{addon.price.toLocaleString('en-IN')}
                       </Typography>
                     </Box>
                   ))}
@@ -335,7 +335,7 @@ export const LuxuryGiftBoxBuilder: React.FC<LuxuryGiftBoxBuilderProps> = ({ open
                       Total Gift Package:
                     </Typography>
                     <Typography variant="h4" sx={{ color: '#E6C594', fontWeight: 800 }}>
-                      ${totalGiftPrice}
+                      ₹{totalGiftPrice.toLocaleString('en-IN')}
                     </Typography>
                   </Box>
 

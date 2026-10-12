@@ -350,7 +350,7 @@ export const DreamscapeFitQuiz: React.FC<DreamscapeFitQuizProps> = ({
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                       <Typography variant="h5" sx={{ color: '#E6C594', fontWeight: 800 }}>
-                        ${matchedProduct.price}
+                        ₹{matchedProduct.price.toLocaleString('en-IN')}
                       </Typography>
                       <Rating value={matchedProduct.rating} readOnly size="small" sx={{ color: '#E6C594' }} />
                     </Box>
